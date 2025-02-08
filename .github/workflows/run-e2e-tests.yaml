@@ -8,6 +8,11 @@ jobs:
   run-tests:
     runs-on: ubuntu-latest
     steps:
+      - name: Display dispatch metadata
+        run: |
+          echo "This workflow was triggered by ${{ github.event_name }}"
+          echo "Payload: ${{ toJson(github.event.client_payload) }}"
+
       - uses: actions/create-github-app-token@v1
         id: app-token
         with:
