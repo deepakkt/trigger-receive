@@ -1,0 +1,44 @@
+name: Run E2E Tests
+
+on:
+  repository_dispatch:
+    types: [trigger-e2e-tests]
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.HYGRAPH_RELEASES_APP_ID }}
+          private-key: ${{ secrets.HYGRAPH_RELEASES_PRIVATE_KEY }}
+
+      - name: Notify trigger-repo (Pending)
+        run: |
+          curl -X POST -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            https://api.github.com/repos/deepakkt/trigger/statuses/${{ github.event.client_payload.sha }} \
+            -d '{"state": "pending", "context": "E2E Tests (trigger-receive)", "description": "E2E tests are running...", "target_url": "https://github.com/deepakkt/trigger-receive/actions"}'
+
+      - name: Run E2E Tests
+        run: |
+          echo "Running E2E tests for PR #${{ github.event.client_payload.pr_number }} from branch ${{ github.event.client_payload.branch }}..."
+          # Simulate test outcome
+          if [ $((RANDOM % 2)) -eq 0 ]; then exit 1; fi  # Simulates random pass/fail
+
+      - name: Notify trigger-repo (Success)
+        if: success()
+        run: |
+          curl -X POST -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            https://api.github.com/repos/deepakkt/trigger/statuses/${{ github.event.client_payload.sha }} \
+            -d '{"state": "success", "context": "E2E Tests (trigger-receive)", "description": "E2E tests passed!", "target_url": "https://github.com/deepakkt/trigger-receive/actions"}'
+
+      - name: Notify trigger-repo (Failure)
+        if: failure()
+        run: |
+          curl -X POST -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            https://api.github.com/repos/deepakkt/trigger/statuses/${{ github.event.client_payload.sha }} \
+            -d '{"state": "failure", "context": "E2E Tests (trigger-receive)", "description": "E2E tests failed!", "target_url": "https://github.com/deepakkt/trigger-receive/actions"}'
